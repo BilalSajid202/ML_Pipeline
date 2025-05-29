@@ -10,7 +10,7 @@ This repository provides a **professional, modular Python package** for building
 
 ## 📂 Folder Structure
 
-```` markdown
+
 ML_Workflow/
 │
 ├── file_handler.py              # Load/store data from file or DB
@@ -22,7 +22,7 @@ ML_Workflow/
 ├── model_saver.py               # Save trained model as pickle
 ├── ML_Workflow_Interface.ipynb  # 🎯 Main interactive Jupyter notebook
 └── README.md
-````
+
 
 ---
 
