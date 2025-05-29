@@ -10,20 +10,18 @@ This repository provides a **professional, modular Python package** for building
 
 ## 📂 Folder Structure
 
-```
-
-ML\_Workflow/
+````
+ML_Workflow/
 │
-├── file_handler.py           # Load/store data from file or DB
-├── data_understanding.py     # Data overview & exploration functions
-├── preprocessing.py          # Data cleaning & preprocessing functions
-├── data_visualization.py     # Graph generation & visualizations
-├── data_labeling.py          # Label encoding and target column setup
-├── model_training.py         # ML model training and evaluation
-├── model_saver.py            # Save trained model as pickle
+├── file_handler.py              # Load/store data from file or DB
+├── data_understanding.py        # Data overview & exploration functions
+├── preprocessing.py             # Data cleaning & preprocessing functions
+├── data_visualization.py        # Graph generation & visualizations
+├── data_labeling.py             # Label encoding and target column setup
+├── model_training.py            # ML model training and evaluation
+├── model_saver.py               # Save trained model as pickle
 ├── ML_Workflow_Interface.ipynb  # 🎯 Main interactive Jupyter notebook
 └── README.md
-
 ````
 
 ---
