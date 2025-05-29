@@ -1,5 +1,3 @@
-# 6_model_training.py
-
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -9,6 +7,7 @@ from sklearn.metrics import (
     accuracy_score, confusion_matrix, precision_score, recall_score, f1_score,
     mean_squared_error, mean_absolute_error, r2_score
 )
+import pandas as pd
 
 # CLASSIFICATION MODELS
 def train_logistic_regression(X_train, X_test, y_train, y_test):
@@ -73,11 +72,31 @@ def evaluate_regression(model, X_test, y_test):
     return model
 
 # ENTRY POINT
-def run_model_pipeline(df, target_column, problem_type, model_choice):
+def run_model_pipeline(df, target_column, problem_type=None, model_choice=None):
     X = df.drop(columns=[target_column])
     y = df[target_column]
+
+    # 🔍 Auto-detect problem type if not provided
+    if problem_type is None:
+        unique_values = y.nunique()
+        if pd.api.types.is_numeric_dtype(y) and unique_values > 10:
+            problem_type = "regression"
+        else:
+            problem_type = "classification"
+        print(f"ℹ️ Auto-detected problem type: {problem_type}")
+
+    # Default model selection if not specified
+    if model_choice is None:
+        model_choice = {
+            "classification": "random_forest",
+            "regression": "linear"
+        }[problem_type]
+        print(f"ℹ️ Using default model: {model_choice}")
+
+    # Split data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
+    # CLASSIFICATION
     if problem_type == "classification":
         if model_choice == "logistic":
             return train_logistic_regression(X_train, X_test, y_train, y_test)
@@ -88,6 +107,7 @@ def run_model_pipeline(df, target_column, problem_type, model_choice):
         elif model_choice == "svm":
             return train_svm_classifier(X_train, X_test, y_train, y_test)
 
+    # REGRESSION
     elif problem_type == "regression":
         if model_choice == "linear":
             return train_linear_regression(X_train, X_test, y_train, y_test)
@@ -98,5 +118,4 @@ def run_model_pipeline(df, target_column, problem_type, model_choice):
         elif model_choice == "svm":
             return train_svm_regressor(X_train, X_test, y_train, y_test)
 
-    else:
-        raise ValueError("Invalid problem type or model choice.")
+    raise ValueError("Invalid problem type or model choice.")
