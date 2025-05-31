@@ -1,55 +1,51 @@
 
 ---
 
-## 📘  ML Package Interface
+### Updated and polished version with improvements:
 
-```markdown
+````markdown
 # 🔍 ML Workflow Pipeline – Interactive and Modular Package
 
-This repository provides a **professional, modular Python package** for building an end-to-end machine learning pipeline, from data loading to deployment, with a **Jupyter Notebook interface** for user interaction.
+This repository provides a **professional, modular Python package** for building an end-to-end machine learning pipeline—from data loading to deployment—with a **Jupyter Notebook interface** for interactive user guidance.
 
 ## 📂 Folder Structure
 
-
-ML_Workflow/
-│
-├── file_handler.py              # Load/store data from file or DB
-├── data_understanding.py        # Data overview & exploration functions
-├── preprocessing.py             # Data cleaning & preprocessing functions
-├── data_visualization.py        # Graph generation & visualizations
-├── data_labeling.py             # Label encoding and target column setup
-├── model_training.py            # ML model training and evaluation
-├── model_saver.py               # Save trained model as pickle
-├── ML_Workflow_Interface.ipynb  # 🎯 Main interactive Jupyter notebook
+ML_Workflow/  
+│  
+├── file_handler.py              # Load/store data from file or DB  
+├── data_understanding.py        # Data overview & exploration functions  
+├── preprocessing.py             # Data cleaning & preprocessing pipeline  
+├── data_visualization.py        # Plotting and visualization utilities  
+├── data_labeling.py             # Label encoding and target column setup  
+├── model_training.py            # ML model training and evaluation (classification/regression)  
+├── model_saver.py               # Model saving using class-based interface  
+├── ML_Workflow_Interface.ipynb  # 🎯 Main interactive Jupyter notebook interface  
 └── README.md
-
 
 ---
 
 ## 🎯 Project Goal
 
-To streamline machine learning workflows using a **user-guided, modular architecture** that:
-- Loads and optionally stores data in a relational DB
-- Offers detailed data understanding
-- Preprocesses and visualizes data
-- Labels the target variable
-- Trains multiple ML models (both supervised & unsupervised)
-- Saves trained models for production
+To streamline machine learning workflows using a **user-guided, modular architecture** that:  
+- Loads and optionally stores data in a relational database (MySQL)  
+- Provides comprehensive data understanding and visualization  
+- Implements a flexible preprocessing pipeline with encoding and scaling options  
+- Supports flexible target labeling strategies  
+- Trains and evaluates multiple ML models (supervised learning)  
+- Saves trained models for production deployment  
 
 ---
 
 ## 🛠️ Features
 
-✅ Load data from CSV/Excel  
-✅ Option to store/load data from MySQL  
-✅ Column renaming before DB storage  
-✅ Full data understanding (shape, types, nulls, stats)  
-✅ All-in-one preprocessing: missing values, encoding, scaling  
-✅ Visualizations: correlation, histograms, boxplots, scatterplots  
-✅ Label dependent variable  
-✅ Train models (classification, regression, clustering)  
-✅ Evaluate with accuracy, recall, precision, F1-score  
-✅ Save trained models via `pickle`
+✅ Load data from CSV/Excel and optionally from MySQL  
+✅ Save/load data to/from MySQL using SQLAlchemy & PyMySQL  
+✅ Data understanding: shape, data types, missing values, and summary statistics  
+✅ Preprocessing: missing value imputation, encoding, scaling (Standard/MinMax)  
+✅ Visualization: histograms, correlation heatmaps, boxplots, scatterplots  
+✅ Flexible target labeling: label encoding and one-hot encoding with reconstruction  
+✅ Train supervised ML models (classification & regression) with evaluation metrics  
+✅ Save trained models as pickle files using a class-based saver  
 
 ---
 
@@ -68,69 +64,81 @@ cd ML_Workflow
 pip install -r requirements.txt
 ```
 
-> Dependencies include: `pandas`, `numpy`, `matplotlib`, `seaborn`, `scikit-learn`, `sqlalchemy`, `pymysql`, etc.
+> Includes: `pandas`, `numpy`, `matplotlib`, `seaborn`, `scikit-learn`, `sqlalchemy`, `pymysql`, `lightgbm`, etc.
 
-3. **Run the Interface Notebook**
-
-Launch the Jupyter interface:
+3. **Launch the Jupyter Interface**
 
 ```bash
 jupyter notebook ML_Workflow_Interface.ipynb
 ```
 
-4. **Follow Steps in Notebook**
+4. **Follow the Guided Steps in the Notebook**
 
-Each cell guides you through:
-
-* Loading and optionally storing your dataset
-* Performing analysis, preprocessing, labeling
-* Choosing and training your ML model
-* Saving the final model for deployment
+* Load and optionally store your dataset
+* Perform exploratory data analysis and visualization
+* Preprocess and label your data
+* Select and train your ML model (auto-detect or manual)
+* Save the trained model for deployment
 
 ---
 
 ## 📊 Supported ML Models
 
-### Supervised
+### Supervised Learning
 
-* **Classification**: Logistic Regression, Decision Tree, Random Forest, SVM, KNN, Naive Bayes
-* **Regression**: Linear Regression, Decision Tree, Random Forest, SVR
+* **Classification:** Logistic Regression, Decision Tree, Random Forest, SVM, LightGBM
+* **Regression:** Linear Regression, Decision Tree, Random Forest, SVR
 
-### Unsupervised
-
-* **Clustering**: KMeans, DBSCAN, Agglomerative
+### (Note: Unsupervised learning will be added in future versions)
 
 ---
 
-## 📦 Output
+## 📦 Outputs
 
-* Cleaned and ready-to-train DataFrame
-* Trained model with evaluation metrics
-* `.pkl` file containing the serialized model
+* Cleaned and preprocessed DataFrame ready for modeling
+* Trained ML model with printed evaluation metrics
+* `.pkl` file containing the serialized trained model for deployment
 
 ---
 
 ## 🔐 Database Integration
 
-* Currently supports **MySQL**
-* Credentials are securely prompted
-* Data stored using `SQLAlchemy` and `pymysql`
+* Supports **MySQL** with secure credential input
+* Uses `SQLAlchemy` and `pymysql` for robust DB interaction
+* Supports data storage with column renaming and type management
 
 ---
 
-## 🧪 Example
+## 🧪 Example Usage Snippet
 
 ```python
-# In the notebook:
+# In the notebook interface:
+
+# Load data
 df = load_data()
+
+# Optionally store in DB
 store_data_in_database(df, "mydb", "mytable", "root", "password", "localhost", "3306")
+
+# Preprocess data with standard scaling
+preprocessed_df = preprocess_pipeline(df, scale_method='standard')
+
+# Label target variable
+labeled_df = Labeler().label_data(preprocessed_df, target_column='Severity')
+
+# Train model pipeline with auto-detection
+model = run_model_pipeline(labeled_df, target_column='Severity')
+
+# Save trained model
+saver = ModelSaver(filename="my_model.pkl")
+saver.save(model)
 ```
 
 ---
 
 ## 🤝 Contributing
 
-Feel free to fork the repo and submit pull requests. Suggestions and improvements are welcome!
+Contributions, suggestions, and pull requests are welcome! Please fork the repo and submit changes.
 
 ---
 
@@ -143,6 +151,6 @@ This project is licensed under the MIT License.
 ## 👤 Author
 
 **Bilal** – AI Engineer
-📧 Contact for queries, improvements, and collaboration.
+📧 Contact for queries and collaboration
 
-```
+
