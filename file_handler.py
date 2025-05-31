@@ -2,6 +2,8 @@ import pandas as pd
 from sqlalchemy import create_engine, MetaData, Table, Column
 from sqlalchemy.types import Integer, Float, String, DateTime, Boolean
 import getpass
+import json
+import os
 
 def map_dtype_to_sqlalchemy(dtype):
     """Map pandas dtype to SQLAlchemy column types."""
@@ -16,6 +18,14 @@ def map_dtype_to_sqlalchemy(dtype):
     else:
         # Default to String for object or categorical types
         return String(255)
+
+def save_db_credentials(creds, filename="db_credentials.json"):
+    try:
+        with open(filename, "w") as f:
+            json.dump(creds, f)
+        print(f"🔐 Database credentials saved to '{filename}'")
+    except Exception as e:
+        print(f"❌ Failed to save DB credentials: {e}")
 
 def load_data():
     print("Enter path of CSV or Excel file:")
@@ -53,6 +63,17 @@ def load_data():
         port = input("Port (default '3306'): ").strip() or '3306'
         database = input("Database name: ").strip()
         table_name = input("Table name to create/use: ").strip()
+
+        # Save credentials for Step 2 use
+        db_creds = {
+            "username": username,
+            "password": password,
+            "host": host,
+            "port": port,
+            "database": database,
+            "table_name": table_name
+        }
+        save_db_credentials(db_creds)
 
         # Show current columns and ask if user wants to rename
         print("\nCurrent columns:", df.columns.tolist())
@@ -107,3 +128,26 @@ def load_data():
     else:
         print("\nProceeding with data without storing in database.")
         return df, {'db': False}
+
+
+# 📌 Step 1: Load Dataset
+if __name__ == "__main__":
+    print("📥 Step 1: Load Dataset")
+
+    df, meta = load_data()
+
+    if df is not None:
+        print("\n✅ Data loaded successfully. Here's a preview:")
+        print(df.head())
+
+        # Save metadata: store origin so it can be referenced in future steps
+        with open("data_origin.txt", "w") as f:
+            f.write("db" if meta.get("db") else "file")
+
+        # Optionally store to CSV for later use if not stored in DB
+        if not meta.get("db"):
+            df.to_csv("loaded_data.csv", index=False)
+            print("💾 Data saved locally as 'loaded_data.csv'.")
+
+    else:
+        print("❌ Failed to load data.")

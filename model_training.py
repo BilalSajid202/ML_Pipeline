@@ -8,10 +8,11 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import pandas as pd
+import lightgbm as lgb
 
 # CLASSIFICATION MODELS
 def train_logistic_regression(X_train, X_test, y_train, y_test):
-    model = LogisticRegression()
+    model = LogisticRegression(max_iter=1000)
     model.fit(X_train, y_train)
     return evaluate_classification(model, X_test, y_test)
 
@@ -21,12 +22,22 @@ def train_decision_tree_classifier(X_train, X_test, y_train, y_test):
     return evaluate_classification(model, X_test, y_test)
 
 def train_random_forest_classifier(X_train, X_test, y_train, y_test):
-    model = RandomForestClassifier()
+    model = RandomForestClassifier(n_estimators=50, max_depth=10, n_jobs=-1)
     model.fit(X_train, y_train)
     return evaluate_classification(model, X_test, y_test)
 
 def train_svm_classifier(X_train, X_test, y_train, y_test):
     model = SVC()
+    model.fit(X_train, y_train)
+    return evaluate_classification(model, X_test, y_test)
+
+def train_lightgbm_classifier(X_train, X_test, y_train, y_test):
+    model = lgb.LGBMClassifier(
+        n_estimators=100,
+        learning_rate=0.1,
+        n_jobs=-1,
+        random_state=42
+    )
     model.fit(X_train, y_train)
     return evaluate_classification(model, X_test, y_test)
 
@@ -42,7 +53,7 @@ def train_decision_tree_regressor(X_train, X_test, y_train, y_test):
     return evaluate_regression(model, X_test, y_test)
 
 def train_random_forest_regressor(X_train, X_test, y_train, y_test):
-    model = RandomForestRegressor()
+    model = RandomForestRegressor(n_estimators=50, max_depth=10, n_jobs=-1)
     model.fit(X_train, y_train)
     return evaluate_regression(model, X_test, y_test)
 
@@ -56,9 +67,9 @@ def evaluate_classification(model, X_test, y_test):
     y_pred = model.predict(X_test)
     print("\n✅ Classification Report")
     print("Accuracy:", accuracy_score(y_test, y_pred))
-    print("Precision:", precision_score(y_test, y_pred, average='weighted'))
-    print("Recall:", recall_score(y_test, y_pred, average='weighted'))
-    print("F1 Score:", f1_score(y_test, y_pred, average='weighted'))
+    print("Precision:", precision_score(y_test, y_pred, average='weighted', zero_division=0))
+    print("Recall:", recall_score(y_test, y_pred, average='weighted', zero_division=0))
+    print("F1 Score:", f1_score(y_test, y_pred, average='weighted', zero_division=0))
     print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
     return model
 
@@ -71,32 +82,33 @@ def evaluate_regression(model, X_test, y_test):
     print("R2 Score:", r2_score(y_test, y_pred))
     return model
 
-# ENTRY POINT
+# MAIN PIPELINE
 def run_model_pipeline(df, target_column, problem_type=None, model_choice=None):
-    X = df.drop(columns=[target_column])
-    y = df[target_column]
+    if isinstance(target_column, (list, tuple)):
+        X = df.drop(columns=target_column)
+        y = df[target_column]
+    else:
+        X = df.drop(columns=[target_column])
+        y = df[target_column]
 
-    # 🔍 Auto-detect problem type if not provided
     if problem_type is None:
-        unique_values = y.nunique()
-        if pd.api.types.is_numeric_dtype(y) and unique_values > 10:
+        if isinstance(y, pd.DataFrame):
+            problem_type = "classification"
+        elif pd.api.types.is_numeric_dtype(y) and y.nunique() > 10:
             problem_type = "regression"
         else:
             problem_type = "classification"
         print(f"ℹ️ Auto-detected problem type: {problem_type}")
 
-    # Default model selection if not specified
     if model_choice is None:
         model_choice = {
-            "classification": "random_forest",
+            "classification": "lightgbm",
             "regression": "linear"
         }[problem_type]
         print(f"ℹ️ Using default model: {model_choice}")
 
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # CLASSIFICATION
     if problem_type == "classification":
         if model_choice == "logistic":
             return train_logistic_regression(X_train, X_test, y_train, y_test)
@@ -106,8 +118,9 @@ def run_model_pipeline(df, target_column, problem_type=None, model_choice=None):
             return train_random_forest_classifier(X_train, X_test, y_train, y_test)
         elif model_choice == "svm":
             return train_svm_classifier(X_train, X_test, y_train, y_test)
+        elif model_choice == "lightgbm":
+            return train_lightgbm_classifier(X_train, X_test, y_train, y_test)
 
-    # REGRESSION
     elif problem_type == "regression":
         if model_choice == "linear":
             return train_linear_regression(X_train, X_test, y_train, y_test)
@@ -118,4 +131,4 @@ def run_model_pipeline(df, target_column, problem_type=None, model_choice=None):
         elif model_choice == "svm":
             return train_svm_regressor(X_train, X_test, y_train, y_test)
 
-    raise ValueError("Invalid problem type or model choice.")
+    raise ValueError("❌ Invalid problem type or model choice.")
