@@ -1,37 +1,62 @@
-# 5_data_labeling.py
-
 from sklearn.preprocessing import LabelEncoder
 import pandas as pd
 
-def label_encode_column(df, column):
-    """Label encodes a specific column"""
-    le = LabelEncoder()
-    df[column] = le.fit_transform(df[column])
-    return df
+class DataLabeler:
+    """
+    Class for encoding target variables in a dataset.
+    Supports label encoding and one-hot encoding.
+    """
 
-def one_hot_encode(df, columns):
-    """Applies one-hot encoding to specified columns"""
-    return pd.get_dummies(df, columns=columns)
+    def __init__(self, df):
+        """
+        Initialize with the DataFrame to label.
+        """
+        self.df = df.copy()
 
-def get_target_column(df):
-    """Ask user to specify the dependent variable"""
-    print("Available columns:", df.columns.tolist())
-    return input("Enter the name of the dependent column: ")
+    def label_encode_column(self, column):
+        """
+        Label encode a specific column in the DataFrame.
+        Converts categorical labels into integer codes.
+        """
+        le = LabelEncoder()
+        self.df[column] = le.fit_transform(self.df[column])
+        return self.df
 
-def label_data(df, target_col):
-    """Ask user how to encode and apply transformation"""
-    print(f"\nHow would you like to encode the target column '{target_col}'?")
-    print("1. Label Encoding (e.g., Cat → 0, Dog → 1)")
-    print("2. One-Hot Encoding (e.g., Cat → [1,0], Dog → [0,1])")
+    def one_hot_encode(self, columns):
+        """
+        Apply one-hot encoding to specified columns.
+        Converts categorical variables into multiple binary columns.
+        """
+        self.df = pd.get_dummies(self.df, columns=columns)
+        return self.df
 
-    choice = input("Enter 1 or 2: ").strip()
+    def get_target_column(self):
+        """
+        Prompts the user to specify the dependent variable (target column).
+        Prints available columns to guide the user.
+        """
+        print("Available columns:", self.df.columns.tolist())
+        target_col = input("Enter the name of the dependent column: ")
+        return target_col
 
-    if choice == "1":
-        df = label_encode_column(df, target_col)
-    elif choice == "2":
-        df = one_hot_encode(df, [target_col])
-    else:
-        print("Invalid choice. Applying label encoding by default.")
-        df = label_encode_column(df, target_col)
+    def label_data(self, target_col):
+        """
+        Ask the user how to encode the target column and apply the chosen encoding.
+        Options:
+        1 - Label Encoding (single integer per category)
+        2 - One-Hot Encoding (binary columns per category)
+        Defaults to Label Encoding if invalid input.
+        """
+        print(f"\nHow would you like to encode the target column '{target_col}'?")
+        print("1. Label Encoding (e.g., Cat → 0, Dog → 1)")
+        print("2. One-Hot Encoding (e.g., Cat → [1,0], Dog → [0,1])")
 
-    return df
+        choice = input("Enter 1 or 2: ").strip()
+
+        if choice == "1":
+            return self.label_encode_column(target_col)
+        elif choice == "2":
+            return self.one_hot_encode([target_col])
+        else:
+            print("Invalid choice. Applying label encoding by default.")
+            return self.label_encode_column(target_col)

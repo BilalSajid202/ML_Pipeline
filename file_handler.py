@@ -5,149 +5,150 @@ import getpass
 import json
 import os
 
-def map_dtype_to_sqlalchemy(dtype):
-    """Map pandas dtype to SQLAlchemy column types."""
-    if pd.api.types.is_integer_dtype(dtype):
-        return Integer
-    elif pd.api.types.is_float_dtype(dtype):
-        return Float
-    elif pd.api.types.is_bool_dtype(dtype):
-        return Boolean
-    elif pd.api.types.is_datetime64_any_dtype(dtype):
-        return DateTime
-    else:
-        # Default to String for object or categorical types
-        return String(255)
+class FileHandler:
+    def __init__(self, credentials_file="db_credentials.json"):
+        self.credentials_file = credentials_file
 
-def save_db_credentials(creds, filename="db_credentials.json"):
-    try:
-        with open(filename, "w") as f:
-            json.dump(creds, f)
-        print(f"🔐 Database credentials saved to '{filename}'")
-    except Exception as e:
-        print(f"❌ Failed to save DB credentials: {e}")
+    def map_dtype_to_sqlalchemy(self, dtype):
+        """Map pandas dtype to SQLAlchemy column types."""
+        if pd.api.types.is_integer_dtype(dtype):
+            return Integer
+        elif pd.api.types.is_float_dtype(dtype):
+            return Float
+        elif pd.api.types.is_bool_dtype(dtype):
+            return Boolean
+        elif pd.api.types.is_datetime64_any_dtype(dtype):
+            return DateTime
+        else:
+            # Default to String for object or categorical types
+            return String(255)
 
-def load_data():
-    print("Enter path of CSV or Excel file:")
-    path = input().strip()
-
-    # Load data based on file extension
-    if path.endswith('.csv'):
+    def save_db_credentials(self, creds):
+        """Save database credentials to a JSON file."""
         try:
-            df = pd.read_csv(path)
+            with open(self.credentials_file, "w") as f:
+                json.dump(creds, f)
+            print(f"🔐 Database credentials saved to '{self.credentials_file}'")
         except Exception as e:
-            print(f"Error loading CSV file: {e}")
+            print(f"❌ Failed to save DB credentials: {e}")
+
+    def load_data(self):
+        """Load data from CSV/Excel and optionally save to database."""
+        print("Enter path of CSV or Excel file:")
+        path = input().strip()
+
+        # Load data based on file extension
+        if path.endswith('.csv'):
+            try:
+                df = pd.read_csv(path)
+            except Exception as e:
+                print(f"Error loading CSV file: {e}")
+                return None, {'db': False}
+        elif path.endswith('.xlsx') or path.endswith('.xls'):
+            try:
+                df = pd.read_excel(path)
+            except Exception as e:
+                print(f"Error loading Excel file: {e}")
+                return None, {'db': False}
+        else:
+            print("Unsupported file format. Please provide CSV or Excel.")
             return None, {'db': False}
-    elif path.endswith('.xlsx') or path.endswith('.xls'):
-        try:
-            df = pd.read_excel(path)
-        except Exception as e:
-            print(f"Error loading Excel file: {e}")
-            return None, {'db': False}
-    else:
-        print("Unsupported file format. Please provide CSV or Excel.")
-        return None, {'db': False}
 
-    print("\nData loaded successfully with columns:")
-    print(df.columns.tolist())
+        print("\nData loaded successfully with columns:")
+        print(df.columns.tolist())
 
-    # Ask if user wants to save in database
-    print("\nDo you want to save this data in a database? (yes/no)")
-    save_db = input().strip().lower()
+        # Ask if user wants to save in database
+        print("\nDo you want to save this data in a database? (yes/no)")
+        save_db = input().strip().lower()
 
-    if save_db == 'yes':
-        print("\nEnter database details:")
-        username = input("Username: ").strip()
-        password = getpass.getpass("Password: ")
-        host = input("Host (default 'localhost'): ").strip() or 'localhost'
-        port = input("Port (default '3306'): ").strip() or '3306'
-        database = input("Database name: ").strip()
-        table_name = input("Table name to create/use: ").strip()
+        if save_db == 'yes':
+            # Get database credentials from user
+            print("\nEnter database details:")
+            username = input("Username: ").strip()
+            password = getpass.getpass("Password: ")
+            host = input("Host (default 'localhost'): ").strip() or 'localhost'
+            port = input("Port (default '3306'): ").strip() or '3306'
+            database = input("Database name: ").strip()
+            table_name = input("Table name to create/use: ").strip()
 
-        # Save credentials for Step 2 use
-        db_creds = {
-            "username": username,
-            "password": password,
-            "host": host,
-            "port": port,
-            "database": database,
-            "table_name": table_name
-        }
-        save_db_credentials(db_creds)
+            db_creds = {
+                "username": username,
+                "password": password,
+                "host": host,
+                "port": port,
+                "database": database,
+                "table_name": table_name
+            }
 
-        # Show current columns and ask if user wants to rename
-        print("\nCurrent columns:", df.columns.tolist())
-        print("Do you want to rename columns before saving? (yes/no)")
-        rename = input().strip().lower()
+            self.save_db_credentials(db_creds)
 
-        if rename == 'yes':
-            new_columns = []
-            for col in df.columns:
-                new_name = input(f"Rename column '{col}' to (press Enter to keep same): ").strip()
-                if new_name:
-                    new_columns.append(new_name)
-                else:
-                    new_columns.append(col)
-            df.columns = new_columns
+            # Optional column renaming
+            print("\nCurrent columns:", df.columns.tolist())
+            print("Do you want to rename columns before saving? (yes/no)")
+            rename = input().strip().lower()
 
-        # Create connection string and engine
-        connection_string = f"mysql+pymysql://{username}:{password}@{host}:{port}/{database}"
-        try:
-            engine = create_engine(connection_string)
-            metadata = MetaData()
+            if rename == 'yes':
+                new_columns = []
+                for col in df.columns:
+                    new_name = input(f"Rename column '{col}' to (press Enter to keep same): ").strip()
+                    new_columns.append(new_name if new_name else col)
+                df.columns = new_columns
 
-            # Define table columns dynamically based on dataframe dtypes
-            columns = []
-            for col_name, dtype in zip(df.columns, df.dtypes):
-                col_type = map_dtype_to_sqlalchemy(dtype)
-                columns.append(Column(col_name, col_type))
+            # Create database engine
+            connection_string = f"mysql+pymysql://{username}:{password}@{host}:{port}/{database}"
+            try:
+                engine = create_engine(connection_string)
+                metadata = MetaData()
 
-            # Create table object
-            table = Table(table_name, metadata, *columns)
+                # Define SQLAlchemy table schema based on DataFrame
+                columns = []
+                for col_name, dtype in zip(df.columns, df.dtypes):
+                    col_type = self.map_dtype_to_sqlalchemy(dtype)
+                    columns.append(Column(col_name, col_type))
 
-            # Ask if user wants to drop table if exists and recreate
-            print(f"\nDo you want to drop table '{table_name}' if it exists and recreate? (yes/no)")
-            drop_recreate = input().strip().lower()
-            if drop_recreate == 'yes':
-                metadata.drop_all(engine, tables=[table], checkfirst=True)
-                print(f"Table '{table_name}' dropped.")
+                table = Table(table_name, metadata, *columns)
 
-            # Create table in DB if not exists
-            metadata.create_all(engine, checkfirst=True)
-            print(f"Table '{table_name}' created or already exists.")
+                # Optional: drop existing table
+                print(f"\nDo you want to drop table '{table_name}' if it exists and recreate? (yes/no)")
+                drop_recreate = input().strip().lower()
+                if drop_recreate == 'yes':
+                    metadata.drop_all(engine, tables=[table], checkfirst=True)
+                    print(f"Table '{table_name}' dropped.")
 
-            # Insert data into table
-            df.to_sql(name=table_name, con=engine, if_exists='append', index=False)
-            print(f"\nData inserted successfully into table '{table_name}'.")
-            return df, {'db': True, 'engine': engine, 'table': table_name}
+                # Create table if it does not exist
+                metadata.create_all(engine, checkfirst=True)
+                print(f"Table '{table_name}' created or already exists.")
 
-        except Exception as e:
-            print(f"Error during database operations: {e}")
+                # Insert DataFrame into the table
+                df.to_sql(name=table_name, con=engine, if_exists='append', index=False)
+                print(f"\nData inserted successfully into table '{table_name}'.")
+                return df, {'db': True, 'engine': engine, 'table': table_name}
+
+            except Exception as e:
+                print(f"Error during database operations: {e}")
+                return df, {'db': False}
+        else:
+            print("\nProceeding with data without storing in database.")
             return df, {'db': False}
-
-    else:
-        print("\nProceeding with data without storing in database.")
-        return df, {'db': False}
-
 
 # 📌 Step 1: Load Dataset
 if __name__ == "__main__":
     print("📥 Step 1: Load Dataset")
 
-    df, meta = load_data()
+    handler = FileHandler()
+    df, meta = handler.load_data()
 
     if df is not None:
         print("\n✅ Data loaded successfully. Here's a preview:")
         print(df.head())
 
-        # Save metadata: store origin so it can be referenced in future steps
+        # Save metadata to track source
         with open("data_origin.txt", "w") as f:
             f.write("db" if meta.get("db") else "file")
 
-        # Optionally store to CSV for later use if not stored in DB
+        # Optionally save locally
         if not meta.get("db"):
             df.to_csv("loaded_data.csv", index=False)
             print("💾 Data saved locally as 'loaded_data.csv'.")
-
     else:
         print("❌ Failed to load data.")

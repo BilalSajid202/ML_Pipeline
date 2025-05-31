@@ -1,3 +1,4 @@
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -7,128 +8,126 @@ from sklearn.metrics import (
     accuracy_score, confusion_matrix, precision_score, recall_score, f1_score,
     mean_squared_error, mean_absolute_error, r2_score
 )
-import pandas as pd
 import lightgbm as lgb
 
-# CLASSIFICATION MODELS
-def train_logistic_regression(X_train, X_test, y_train, y_test):
-    model = LogisticRegression(max_iter=1000)
-    model.fit(X_train, y_train)
-    return evaluate_classification(model, X_test, y_test)
 
-def train_decision_tree_classifier(X_train, X_test, y_train, y_test):
-    model = DecisionTreeClassifier()
-    model.fit(X_train, y_train)
-    return evaluate_classification(model, X_test, y_test)
+class MLModelPipeline:
+    """
+    Class to handle training and evaluation of classification and regression models.
+    Supports several sklearn models and LightGBM for classification.
+    """
 
-def train_random_forest_classifier(X_train, X_test, y_train, y_test):
-    model = RandomForestClassifier(n_estimators=50, max_depth=10, n_jobs=-1)
-    model.fit(X_train, y_train)
-    return evaluate_classification(model, X_test, y_test)
+    def __init__(self, df: pd.DataFrame, target_column, problem_type=None, model_choice=None):
+        """
+        Initialize pipeline with dataset, target column, problem type, and model choice.
+        
+        :param df: Input DataFrame containing features and target.
+        :param target_column: Name or list of names of the target variable(s).
+        :param problem_type: "classification" or "regression". Auto-detected if None.
+        :param model_choice: Model to use. Defaults to LightGBM for classification,
+                             Linear Regression for regression if None.
+        """
+        self.df = df
+        self.target_column = target_column
+        self.problem_type = problem_type
+        self.model_choice = model_choice
 
-def train_svm_classifier(X_train, X_test, y_train, y_test):
-    model = SVC()
-    model.fit(X_train, y_train)
-    return evaluate_classification(model, X_test, y_test)
+        self.X, self.y = self._split_features_target()
+        self._auto_detect_problem_type()
+        self._set_default_model()
 
-def train_lightgbm_classifier(X_train, X_test, y_train, y_test):
-    model = lgb.LGBMClassifier(
-        n_estimators=100,
-        learning_rate=0.1,
-        n_jobs=-1,
-        random_state=42
-    )
-    model.fit(X_train, y_train)
-    return evaluate_classification(model, X_test, y_test)
-
-# REGRESSION MODELS
-def train_linear_regression(X_train, X_test, y_train, y_test):
-    model = LinearRegression()
-    model.fit(X_train, y_train)
-    return evaluate_regression(model, X_test, y_test)
-
-def train_decision_tree_regressor(X_train, X_test, y_train, y_test):
-    model = DecisionTreeRegressor()
-    model.fit(X_train, y_train)
-    return evaluate_regression(model, X_test, y_test)
-
-def train_random_forest_regressor(X_train, X_test, y_train, y_test):
-    model = RandomForestRegressor(n_estimators=50, max_depth=10, n_jobs=-1)
-    model.fit(X_train, y_train)
-    return evaluate_regression(model, X_test, y_test)
-
-def train_svm_regressor(X_train, X_test, y_train, y_test):
-    model = SVR()
-    model.fit(X_train, y_train)
-    return evaluate_regression(model, X_test, y_test)
-
-# EVALUATION FUNCTIONS
-def evaluate_classification(model, X_test, y_test):
-    y_pred = model.predict(X_test)
-    print("\n✅ Classification Report")
-    print("Accuracy:", accuracy_score(y_test, y_pred))
-    print("Precision:", precision_score(y_test, y_pred, average='weighted', zero_division=0))
-    print("Recall:", recall_score(y_test, y_pred, average='weighted', zero_division=0))
-    print("F1 Score:", f1_score(y_test, y_pred, average='weighted', zero_division=0))
-    print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
-    return model
-
-def evaluate_regression(model, X_test, y_test):
-    y_pred = model.predict(X_test)
-    print("\n✅ Regression Report")
-    print("MAE:", mean_absolute_error(y_test, y_pred))
-    print("MSE:", mean_squared_error(y_test, y_pred))
-    print("RMSE:", mean_squared_error(y_test, y_pred, squared=False))
-    print("R2 Score:", r2_score(y_test, y_pred))
-    return model
-
-# MAIN PIPELINE
-def run_model_pipeline(df, target_column, problem_type=None, model_choice=None):
-    if isinstance(target_column, (list, tuple)):
-        X = df.drop(columns=target_column)
-        y = df[target_column]
-    else:
-        X = df.drop(columns=[target_column])
-        y = df[target_column]
-
-    if problem_type is None:
-        if isinstance(y, pd.DataFrame):
-            problem_type = "classification"
-        elif pd.api.types.is_numeric_dtype(y) and y.nunique() > 10:
-            problem_type = "regression"
+    def _split_features_target(self):
+        """Split dataframe into features (X) and target (y)."""
+        if isinstance(self.target_column, (list, tuple)):
+            X = self.df.drop(columns=self.target_column)
+            y = self.df[self.target_column]
         else:
-            problem_type = "classification"
-        print(f"ℹ️ Auto-detected problem type: {problem_type}")
+            X = self.df.drop(columns=[self.target_column])
+            y = self.df[self.target_column]
+        return X, y
 
-    if model_choice is None:
-        model_choice = {
-            "classification": "lightgbm",
-            "regression": "linear"
-        }[problem_type]
-        print(f"ℹ️ Using default model: {model_choice}")
+    def _auto_detect_problem_type(self):
+        """Automatically determine if problem is classification or regression."""
+        if self.problem_type is None:
+            if isinstance(self.y, pd.DataFrame):
+                self.problem_type = "classification"
+            elif pd.api.types.is_numeric_dtype(self.y) and self.y.nunique() > 10:
+                self.problem_type = "regression"
+            else:
+                self.problem_type = "classification"
+            print(f"ℹ️ Auto-detected problem type: {self.problem_type}")
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    def _set_default_model(self):
+        """Set default model choice if not specified."""
+        if self.model_choice is None:
+            self.model_choice = {
+                "classification": "lightgbm",
+                "regression": "linear"
+            }[self.problem_type]
+            print(f"ℹ️ Using default model: {self.model_choice}")
 
-    if problem_type == "classification":
-        if model_choice == "logistic":
-            return train_logistic_regression(X_train, X_test, y_train, y_test)
-        elif model_choice == "decision_tree":
-            return train_decision_tree_classifier(X_train, X_test, y_train, y_test)
-        elif model_choice == "random_forest":
-            return train_random_forest_classifier(X_train, X_test, y_train, y_test)
-        elif model_choice == "svm":
-            return train_svm_classifier(X_train, X_test, y_train, y_test)
-        elif model_choice == "lightgbm":
-            return train_lightgbm_classifier(X_train, X_test, y_train, y_test)
+    def run(self):
+        """Run the entire pipeline: train, evaluate and return trained model."""
+        X_train, X_test, y_train, y_test = train_test_split(
+            self.X, self.y, test_size=0.2, random_state=42
+        )
 
-    elif problem_type == "regression":
-        if model_choice == "linear":
-            return train_linear_regression(X_train, X_test, y_train, y_test)
-        elif model_choice == "decision_tree":
-            return train_decision_tree_regressor(X_train, X_test, y_train, y_test)
-        elif model_choice == "random_forest":
-            return train_random_forest_regressor(X_train, X_test, y_train, y_test)
-        elif model_choice == "svm":
-            return train_svm_regressor(X_train, X_test, y_train, y_test)
+        if self.problem_type == "classification":
+            return self._train_classification(X_train, X_test, y_train, y_test)
+        elif self.problem_type == "regression":
+            return self._train_regression(X_train, X_test, y_train, y_test)
+        else:
+            raise ValueError("❌ Invalid problem type.")
 
-    raise ValueError("❌ Invalid problem type or model choice.")
+    # --- Training methods for classification ---
+    def _train_classification(self, X_train, X_test, y_train, y_test):
+        models = {
+            "logistic": LogisticRegression(max_iter=1000),
+            "decision_tree": DecisionTreeClassifier(),
+            "random_forest": RandomForestClassifier(n_estimators=50, max_depth=10, n_jobs=-1),
+            "svm": SVC(),
+            "lightgbm": lgb.LGBMClassifier(n_estimators=100, learning_rate=0.1, n_jobs=-1, random_state=42)
+        }
+
+        if self.model_choice not in models:
+            raise ValueError(f"❌ Invalid classification model choice: {self.model_choice}")
+
+        model = models[self.model_choice]
+        model.fit(X_train, y_train)
+        self._evaluate_classification(model, X_test, y_test)
+        return model
+
+    # --- Training methods for regression ---
+    def _train_regression(self, X_train, X_test, y_train, y_test):
+        models = {
+            "linear": LinearRegression(),
+            "decision_tree": DecisionTreeRegressor(),
+            "random_forest": RandomForestRegressor(n_estimators=50, max_depth=10, n_jobs=-1),
+            "svm": SVR()
+        }
+
+        if self.model_choice not in models:
+            raise ValueError(f"❌ Invalid regression model choice: {self.model_choice}")
+
+        model = models[self.model_choice]
+        model.fit(X_train, y_train)
+        self._evaluate_regression(model, X_test, y_test)
+        return model
+
+    # --- Evaluation methods ---
+    def _evaluate_classification(self, model, X_test, y_test):
+        y_pred = model.predict(X_test)
+        print("\n✅ Classification Report")
+        print("Accuracy:", accuracy_score(y_test, y_pred))
+        print("Precision:", precision_score(y_test, y_pred, average='weighted', zero_division=0))
+        print("Recall:", recall_score(y_test, y_pred, average='weighted', zero_division=0))
+        print("F1 Score:", f1_score(y_test, y_pred, average='weighted', zero_division=0))
+        print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+
+    def _evaluate_regression(self, model, X_test, y_test):
+        y_pred = model.predict(X_test)
+        print("\n✅ Regression Report")
+        print("MAE:", mean_absolute_error(y_test, y_pred))
+        print("MSE:", mean_squared_error(y_test, y_pred))
+        print("RMSE:", mean_squared_error(y_test, y_pred, squared=False))
+        print("R2 Score:", r2_score(y_test, y_pred))
