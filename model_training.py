@@ -9,35 +9,28 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score
 )
 import lightgbm as lgb
-
+import os
 
 class MLModelPipeline:
     """
     Class to handle training and evaluation of classification and regression models.
-    Supports several sklearn models and LightGBM for classification.
+    Automatically saves evaluation results to outputs/evaluation_summary.txt.
     """
 
     def __init__(self, df: pd.DataFrame, target_column, problem_type=None, model_choice=None):
-        """
-        Initialize pipeline with dataset, target column, problem type, and model choice.
-        
-        :param df: Input DataFrame containing features and target.
-        :param target_column: Name or list of names of the target variable(s).
-        :param problem_type: "classification" or "regression". Auto-detected if None.
-        :param model_choice: Model to use. Defaults to LightGBM for classification,
-                             Linear Regression for regression if None.
-        """
         self.df = df
         self.target_column = target_column
         self.problem_type = problem_type
         self.model_choice = model_choice
+        self.output_dir = "outputs"
+        os.makedirs(self.output_dir, exist_ok=True)
+        self.evaluation_path = os.path.join(self.output_dir, "evaluation_summary.txt")
 
         self.X, self.y = self._split_features_target()
         self._auto_detect_problem_type()
         self._set_default_model()
 
     def _split_features_target(self):
-        """Split dataframe into features (X) and target (y)."""
         if isinstance(self.target_column, (list, tuple)):
             X = self.df.drop(columns=self.target_column)
             y = self.df[self.target_column]
@@ -47,7 +40,6 @@ class MLModelPipeline:
         return X, y
 
     def _auto_detect_problem_type(self):
-        """Automatically determine if problem is classification or regression."""
         if self.problem_type is None:
             if isinstance(self.y, pd.DataFrame):
                 self.problem_type = "classification"
@@ -58,7 +50,6 @@ class MLModelPipeline:
             print(f"ℹ️ Auto-detected problem type: {self.problem_type}")
 
     def _set_default_model(self):
-        """Set default model choice if not specified."""
         if self.model_choice is None:
             self.model_choice = {
                 "classification": "lightgbm",
@@ -67,7 +58,6 @@ class MLModelPipeline:
             print(f"ℹ️ Using default model: {self.model_choice}")
 
     def run(self):
-        """Run the entire pipeline: train, evaluate and return trained model."""
         X_train, X_test, y_train, y_test = train_test_split(
             self.X, self.y, test_size=0.2, random_state=42
         )
@@ -79,7 +69,6 @@ class MLModelPipeline:
         else:
             raise ValueError("❌ Invalid problem type.")
 
-    # --- Training methods for classification ---
     def _train_classification(self, X_train, X_test, y_train, y_test):
         models = {
             "logistic": LogisticRegression(max_iter=1000),
@@ -97,7 +86,6 @@ class MLModelPipeline:
         self._evaluate_classification(model, X_test, y_test)
         return model
 
-    # --- Training methods for regression ---
     def _train_regression(self, X_train, X_test, y_train, y_test):
         models = {
             "linear": LinearRegression(),
@@ -114,20 +102,45 @@ class MLModelPipeline:
         self._evaluate_regression(model, X_test, y_test)
         return model
 
-    # --- Evaluation methods ---
     def _evaluate_classification(self, model, X_test, y_test):
         y_pred = model.predict(X_test)
+        metrics = {
+            "Accuracy": accuracy_score(y_test, y_pred),
+            "Precision": precision_score(y_test, y_pred, average='weighted', zero_division=0),
+            "Recall": recall_score(y_test, y_pred, average='weighted', zero_division=0),
+            "F1 Score": f1_score(y_test, y_pred, average='weighted', zero_division=0),
+            "Confusion Matrix": confusion_matrix(y_test, y_pred).tolist()
+        }
+
         print("\n✅ Classification Report")
-        print("Accuracy:", accuracy_score(y_test, y_pred))
-        print("Precision:", precision_score(y_test, y_pred, average='weighted', zero_division=0))
-        print("Recall:", recall_score(y_test, y_pred, average='weighted', zero_division=0))
-        print("F1 Score:", f1_score(y_test, y_pred, average='weighted', zero_division=0))
-        print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+        for key, value in metrics.items():
+            print(f"{key}: {value}")
+
+        self._save_metrics_to_file(metrics, "Classification")
 
     def _evaluate_regression(self, model, X_test, y_test):
         y_pred = model.predict(X_test)
+        metrics = {
+            "MAE": mean_absolute_error(y_test, y_pred),
+            "MSE": mean_squared_error(y_test, y_pred),
+            "RMSE": mean_squared_error(y_test, y_pred, squared=False),
+            "R2 Score": r2_score(y_test, y_pred)
+        }
+
         print("\n✅ Regression Report")
-        print("MAE:", mean_absolute_error(y_test, y_pred))
-        print("MSE:", mean_squared_error(y_test, y_pred))
-        print("RMSE:", mean_squared_error(y_test, y_pred, squared=False))
-        print("R2 Score:", r2_score(y_test, y_pred))
+        for key, value in metrics.items():
+            print(f"{key}: {value}")
+
+        self._save_metrics_to_file(metrics, "Regression")
+
+    def _save_metrics_to_file(self, metrics: dict, title: str):
+        """Write evaluation metrics to text file."""
+        with open(self.evaluation_path, "w") as f:
+            f.write(f"{title} Evaluation Report\n")
+            f.write("-" * 40 + "\n")
+            for key, value in metrics.items():
+                if isinstance(value, list):
+                    f.write(f"{key}:\n{value}\n")
+                else:
+                    f.write(f"{key}: {value:.4f}\n")
+        print(f"\n📁 Evaluation summary saved to {self.evaluation_path}")

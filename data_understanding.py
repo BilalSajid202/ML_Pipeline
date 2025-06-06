@@ -5,10 +5,12 @@ import os
 import json
 
 class DataUnderstanding:
-    def __init__(self, creds_file="db_credentials.json", local_file="loaded_data.csv", origin_file="data_origin.txt"):
+    def __init__(self, creds_file="db_credentials.json", local_file="loaded_data.csv",
+                 origin_file="data_origin.txt", summary_file="outputs/data_summary.txt"):
         self.creds_file = creds_file
         self.local_file = local_file
         self.origin_file = origin_file
+        self.summary_file = summary_file
 
     def fetch_data_from_file(self):
         """Loads data from a local CSV file."""
@@ -62,11 +64,32 @@ class DataUnderstanding:
             return None
 
     def data_summary(self, df):
-        """Performs basic data analysis and prints summary."""
+        """Performs basic data analysis, prints and saves summary to a file."""
         if df is None or df.empty:
             print("⚠️ No data to summarize.")
             return
 
+        os.makedirs(os.path.dirname(self.summary_file), exist_ok=True)
+
+        with open(self.summary_file, "w", encoding="utf-8") as f:
+            f.write("📊 Data Shape:\n")
+            f.write(f"{df.shape}\n\n")
+
+            f.write("🧬 Data Types:\n")
+            f.write(f"{df.dtypes.to_string()}\n\n")
+
+            f.write("❓ Missing Values:\n")
+            f.write(f"{df.isnull().sum().to_string()}\n\n")
+
+            f.write("📈 Descriptive Statistics:\n")
+            f.write(f"{df.describe(include='all').to_string()}\n\n")
+
+            f.write("🔍 Sample Rows:\n")
+            f.write(f"{df.head().to_string()}\n")
+
+        print(f"✅ Data summary saved to '{self.summary_file}'.")
+
+        # Optional: also print to console
         print("\n📊 Data Shape:", df.shape)
         print("\n🧬 Data Types:\n", df.dtypes)
         print("\n❓ Missing Values:\n", df.isnull().sum())
@@ -89,6 +112,7 @@ class DataUnderstanding:
         else:
             print(f"❌ Invalid origin '{origin}' in '{self.origin_file}'. Expected 'db' or 'file'.")
             return None
+
 
 # 📌 Step 2: Understanding Dataset
 if __name__ == "__main__":
